@@ -1,0 +1,67 @@
+version: "2"
+services:
+
+  oauth-session-store:
+    image: redis
+    container_name: oauth-session-store
+
+  oauth-data:
+    image: busybox
+    container_name: oauth-data
+    volumes:
+      - /var/lib/postgresql/data
+
+  oauth-db:
+    image: postgres:9.3
+    container_name: oauth-db
+    volumes_from:
+      - oauth-data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=password
+
+  oauth-web:
+    build: docker/php-5.6.21-apache-mysql-redis
+    container_name: oauth-web
+    volumes:
+      - ./Auth/www/:/var/www/html/
+    links:
+      - oauth-db:oauth-db
+      - oauth-session-store:session-store
+    ports:
+      - "80:80"
+    depends_on:
+      - oauth-db
+      - oauth-session-store
+
+  oauth-client-data:
+    image: busybox
+    container_name: oauth-client-data
+    volumes:
+      - /var/lib/postgresql/data
+
+  oauth-client-db:
+    image: postgres:9.3
+    container_name: oauth-client-db
+    volumes_from:
+      - oauth-client-data
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_PASSWORD=password
+
+  oauth-client-web:
+    # image: vorrarit/php:5.6.21-apache-mysql
+    build: docker/php-5.6.21-apache-mysql-redis
+    container_name: oauth-client-web
+    volumes:
+      - ./Client/www/:/var/www/html/
+    links:
+      - oauth-client-db:oauth-client-db
+      - oauth-session-store:session-store
+    ports:
+      - "81:80"
+    depends_on:
+      - oauth-client-db
+      - oauth-session-store
